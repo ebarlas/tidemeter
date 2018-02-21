@@ -51,6 +51,10 @@ class TidePrediction:
             'H' if self.high else 'L')
 
 
+def parse_tide_prediction(str_time, str_level, str_high):
+    return TidePrediction(parse_datetime_iso8601(str_time), float(str_level), str_high == 'H')
+
+
 def parse_datetime_iso8601(utc_date_string):
     return datetime.datetime.strptime(utc_date_string, FORMAT_ISO8601).replace(tzinfo=TZ_UTC)
 
@@ -92,15 +96,8 @@ def parse_tide_predictions(text):
     pos_level = header.index(HEADER_LEVEL)
     pos_type = header.index(HEADER_TYPE)
 
-    result = []
-    for line in lines[1:]:
-        spl = line.split('\t')
-        tide_time = parse_datetime_iso8601(spl[pos_time])
-        tide_level = float(spl[pos_level])
-        tide_type = spl[pos_type] == 'H'
-        result.append(TidePrediction(tide_time, tide_level, tide_type))
-
-    return result
+    lines = (line.split('\t') for line in lines[1:])
+    return [parse_tide_prediction(line[pos_time], line[pos_level], line[pos_type]) for line in lines]
 
 
 def find_tide_pair(predictions, time):
@@ -135,7 +132,7 @@ def load_tide_predictions(file_name):
     with open(file_name, 'rb') as csvfile:
         reader = csv.reader(csvfile, delimiter=' ', quotechar='|')
         for row in reader:
-            predictions.append(TidePrediction(parse_datetime_iso8601(row[0]), float(row[1]), row[2] == 'H'))
+            predictions.append(parse_tide_prediction(*row))
     return predictions
 
 
