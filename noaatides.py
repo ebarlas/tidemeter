@@ -155,12 +155,28 @@ class TideNow:
 
 
 class TideTask:
-    def __init__(self, tide_station, tide_offset, time_range, renew_threshold):
+    def __init__(self, tide_station, tide_offset, time_range, renew_threshold, file_name):
         self.tide_station = tide_station
         self.tide_offset = tide_offset
         self.time_range = time_range
         self.renew_threshold = renew_threshold
+        self.file_name = file_name
         self.predictions = []
+        self._try_load()
+
+    def _try_load(self):
+        try:
+            self.predictions = load_tide_predictions(self.file_name)
+            print('loaded predictions from %s' % self.file_name)
+        except Exception:
+            pass
+
+    def _try_store(self):
+        try:
+            store_tide_prediction(self.predictions, self.file_name)
+            print('stored predictions to %s' % self.file_name)
+        except Exception:
+            pass
 
     def should_renew_tides(self):
         return not self.predictions or self.predictions[-1].time < datetime.datetime.now(TZ_UTC) + self.renew_threshold
@@ -169,6 +185,11 @@ class TideTask:
         now = datetime.datetime.now(TZ_UTC)
         text = request_tide_predictions(self.tide_station, now - self.time_range[0], now + self.time_range[1])
         self.predictions = self.tide_offset.apply_all(parse_tide_predictions(text))
+        print 'renewed tides, count=%s, first=%s, last=%s' % (
+            len(self.predictions),
+            format_datetime_local(self.predictions[0].time),
+            format_datetime_local(self.predictions[-1].time))
+        self._try_store()
 
     def await_tide_pair(self):
         while True:
@@ -183,10 +204,6 @@ class TideTask:
         try:
             if self.should_renew_tides():
                 self.renew()
-                print 'renewed tides, count=%s, first=%s, last=%s' % (
-                    len(self.predictions),
-                    format_datetime_local(self.predictions[0].time),
-                    format_datetime_local(self.predictions[-1].time))
         except Exception as ex:
             print 'error occurred querying tide predictions: ', ex
 
@@ -239,7 +256,8 @@ def main():
         '9414290',
         TideOffset((131, 179), (1.15, 0.82)),
         (datetime.timedelta(days=1), datetime.timedelta(days=7)),
-        datetime.timedelta(days=1))
+        datetime.timedelta(days=1),
+        'tasktides.csv')
     tt.start()
     tide_now = tt.await_tide_pair()
     print(tide_now)
