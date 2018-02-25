@@ -1,0 +1,21 @@
+{
+  "tide_station": "9414290",
+  "tide_time_offset": {
+    "low": 131,
+    "high": 179
+  },
+  "tide_level_offset": {
+    "low": 1.15,
+    "high": 0.82
+  },
+  "tide_request_window": {
+    "back": 1,
+    "forward": 7
+  },
+  "tide_renew_threshold": 1,
+  "tide_predictions_file_name": "tides.csv",
+  "sound_enabled": true,
+  "gpio_pin_display": 4,
+  "gpio_pin_sound": 17,
+  "gpio_pin_power": 27
+}

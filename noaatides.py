@@ -167,14 +167,14 @@ class TideTask:
     def _try_load(self):
         try:
             self.predictions = load_tide_predictions(self.file_name)
-            print('loaded predictions from %s' % self.file_name)
+            print('loaded %d predictions from %s' % (len(self.predictions), self.file_name))
         except Exception:
             pass
 
     def _try_store(self):
         try:
             store_tide_prediction(self.predictions, self.file_name)
-            print('stored predictions to %s' % self.file_name)
+            print('stored %d predictions to %s' % (len(self.predictions), self.file_name))
         except Exception:
             pass
 
@@ -191,7 +191,7 @@ class TideTask:
             format_datetime_local(self.predictions[-1].time))
         self._try_store()
 
-    def await_tide_pair(self):
+    def await_tide_now(self):
         while True:
             now = datetime.datetime.now(TZ_UTC)
             pair = find_tide_pair(self.predictions, now)
@@ -214,7 +214,7 @@ class TideTask:
 
     def start(self):
         t = threading.Thread(target=self._run_loop)
-        t.daemon = True
+        t.setDaemon(True)
         t.start()
 
 
@@ -259,7 +259,7 @@ def main():
         datetime.timedelta(days=1),
         'tasktides.csv')
     tt.start()
-    tide_now = tt.await_tide_pair()
+    tide_now = tt.await_tide_now()
     print(tide_now)
 
 
