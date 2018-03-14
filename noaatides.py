@@ -5,6 +5,7 @@ import datetime
 import math
 import threading
 import csv
+import logging
 
 FORMAT_DATETIME = '%Y-%m-%dT%H:%M'
 FORMAT_ISO8601 = '%Y-%m-%dT%H:%M:%SZ'
@@ -17,6 +18,8 @@ TZ_PAC = pytz.timezone('America/Los_Angeles')
 HEADER_TIME = 'time_ISO8601'
 HEADER_LEVEL = 'sea_surface_height_amplitude_due_to_equilibrium_ocean_tide [feet]'
 HEADER_TYPE = 'type'
+
+logger = logging.getLogger(__name__)
 
 
 class TideOffset:
@@ -167,14 +170,14 @@ class TideTask:
     def _try_load(self):
         try:
             self.predictions = load_tide_predictions(self.file_name)
-            print('loaded %d predictions from %s' % (len(self.predictions), self.file_name))
+            logger.info('loaded %d predictions from %s' % (len(self.predictions), self.file_name))
         except Exception:
             pass
 
     def _try_store(self):
         try:
             store_tide_prediction(self.predictions, self.file_name)
-            print('stored %d predictions to %s' % (len(self.predictions), self.file_name))
+            logger.info('stored %d predictions to %s' % (len(self.predictions), self.file_name))
         except Exception:
             pass
 
@@ -185,10 +188,10 @@ class TideTask:
         now = datetime.datetime.now(TZ_UTC)
         text = request_tide_predictions(self.tide_station, now - self.time_range[0], now + self.time_range[1])
         self.predictions = self.tide_offset.apply_all(parse_tide_predictions(text))
-        print 'renewed tides, count=%s, first=%s, last=%s' % (
+        logger.info('renewed tides, count=%s, first=%s, last=%s' % (
             len(self.predictions),
             format_datetime_local(self.predictions[0].time),
-            format_datetime_local(self.predictions[-1].time))
+            format_datetime_local(self.predictions[-1].time)))
         self._try_store()
 
     def await_tide_now(self):
@@ -204,8 +207,8 @@ class TideTask:
         try:
             if self.should_renew_tides():
                 self.renew()
-        except Exception as ex:
-            print 'error occurred querying tide predictions: ', ex
+        except Exception:
+            logger.exception('error occurred querying tide predictions')
 
     def _run_loop(self):
         while True:

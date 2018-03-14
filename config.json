@@ -13,9 +13,12 @@
     "forward": 7
   },
   "tide_renew_threshold": 1,
+  "log_file_name": "tidemeter.log",
   "tide_predictions_file_name": "tides.csv",
-  "sound_enabled": true,
-  "gpio_pin_display": 4,
-  "gpio_pin_sound": 17,
-  "gpio_pin_power": 27
+  "sound_enabled": false,
+  "gpio_pin_display": 17,
+  "gpio_pin_sound": 4,
+  "gpio_pin_power": 27,
+  "led_pin": 21,
+  "led_brightness": 255
 }

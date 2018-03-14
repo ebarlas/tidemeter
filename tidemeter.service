@@ -1,0 +1,13 @@
+[Unit]
+Description=Tide Meter
+
+[Service]
+ExecStart=/home/pi/tide-meter/tidemeter.sh
+WorkingDirectory=/home/pi/tide-meter
+StandardOutput=inherit
+StandardError=inherit
+Restart=always
+User=pi
+
+[Install]
+WantedBy=multi-user.target

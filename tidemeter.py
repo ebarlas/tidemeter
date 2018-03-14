@@ -9,6 +9,8 @@ import datetime
 import noaatides
 import tideleds
 import threading
+import logging
+import logging.handlers
 
 # LED strip configuration:
 LED_COUNT = 16  # Number of LED pixels.
@@ -37,6 +39,19 @@ COLOR_CYAN = neopixel.Color(0, 255, 255)
 COLORS = [COLOR_RED, COLOR_GREEN, COLOR_BLUE, COLOR_MAGENTA, COLOR_CYAN]
 
 RPi.GPIO.setmode(RPi.GPIO.BCM)
+
+logger = logging.getLogger(__name__)
+
+
+def init_logger(file_name):
+    formatter = logging.Formatter('[%(asctime)s] <%(threadName)s> %(levelname)s - %(message)s')
+
+    handler = logging.handlers.RotatingFileHandler(file_name, maxBytes=100000, backupCount=3)
+    handler.setFormatter(formatter)
+
+    log = logging.getLogger('')
+    log.setLevel(logging.INFO)
+    log.addHandler(handler)
 
 
 def gpio_make_callback(pin, callback):
@@ -85,21 +100,19 @@ def speak(message):
         stderr=subprocess.STDOUT)
 
 
-def announce_tide_events(tide_task, gpio_pin_display):
+def announce_tide_events(tide_task, gpio_pin_sound):
     sound = {'on': True}
 
     def toggle_sound():
         sound['on'] = not sound['on']
         speak('The sound is now turned %s.' % ('on' if sound['on'] else 'off'))
 
-    gpio_add_listener(gpio_pin_display, gpio_make_callback(gpio_pin_display, toggle_sound))
+    gpio_add_listener(gpio_pin_sound, gpio_make_callback(gpio_pin_sound, toggle_sound))
 
     prev = None
 
     while True:
         tide_now = tide_task.await_tide_now()
-
-        print tide_now
 
         if sound['on']:
             if prev and prev.tide_rising() != tide_now.tide_rising():
@@ -115,6 +128,24 @@ def announce_tide_events(tide_task, gpio_pin_display):
         time.sleep(10)
 
 
+def start_announcement_thread(tide_task, gpio_pin_sound):
+    t = threading.Thread(target=announce_tide_events, args=(tide_task, gpio_pin_sound))
+    t.setDaemon(True)
+    t.start()
+
+
+def log_tides(tide_task):
+    while True:
+        logger.info(tide_task.await_tide_now())
+        time.sleep(60)
+
+
+def start_tide_logger(tide_task):
+    t = threading.Thread(target=log_tides, args=(tide_task,))
+    t.setDaemon(True)
+    t.start()
+
+
 def render(strip, tide_leds):
     n = 0
     for led_group in [tide_leds.low_leds, tide_leds.led_strip, tide_leds.high_leds]:
@@ -122,6 +153,15 @@ def render(strip, tide_leds):
             strip.setPixelColor(n, led_color)
             n = n + 1
     strip.show()
+
+
+def power_off():
+    p = subprocess.Popen(
+        ['sudo', 'shutdown', '-h', 'now'],
+        stdout=FNULL,
+        stderr=subprocess.STDOUT)
+
+    p.wait()
 
 
 def main():
@@ -141,14 +181,17 @@ def main():
     tide_predictions_file_name = config['tide_predictions_file_name']
     gpio_pin_display = config['gpio_pin_display']
     gpio_pin_sound = config['gpio_pin_sound']
+    gpio_pin_power = config['gpio_pin_power']
+
+    init_logger(config['log_file_name'])
 
     strip = neopixel.Adafruit_NeoPixel(
         LED_COUNT,
-        LED_PIN,
+        config['led_pin'],
         LED_FREQ_HZ,
         LED_DMA,
         LED_INVERT,
-        LED_BRIGHTNESS,
+        config['led_brightness'],
         LED_CHANNEL,
         LED_STRIP)
 
@@ -165,12 +208,16 @@ def main():
 
     tt.start()
 
-    t = threading.Thread(target=announce_tide_events, args=(tt, gpio_pin_sound))
-    t.setDaemon(True)
-    t.start()
+    start_tide_logger(tt)
 
-    color_wheel = lambda n: wheel_color_mapper(n, 0)
-    color_wheel_offset = lambda n, i: wheel_color_mapper(n, i)
+    if config['sound_enabled']:
+        start_announcement_thread(tt, gpio_pin_sound)
+
+    def color_wheel(n):
+        return wheel_color_mapper(n, 0)
+
+    def color_wheel_offset(n, i):
+        return wheel_color_mapper(n, i)
 
     color = {'mode': 0}
 
@@ -197,6 +244,7 @@ def main():
         event.set()
 
     gpio_add_listener(gpio_pin_display, gpio_make_callback(gpio_pin_display, next_mode))
+    gpio_add_listener(gpio_pin_power, gpio_make_callback(gpio_pin_power, power_off))
 
     while True:
         tide_now = tt.await_tide_now()
