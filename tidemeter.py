@@ -6,11 +6,12 @@ import os
 import sys
 import json
 import datetime
-import noaatides
 import tideleds
 import threading
 import logging
 import logging.handlers
+from noaatides import predictions
+from noaatides import task
 
 # LED strip configuration:
 LED_COUNT = 16  # Number of LED pixels.
@@ -178,7 +179,6 @@ def main():
     tide_request_window_back = config['tide_request_window']['back']
     tide_request_window_forward = config['tide_request_window']['forward']
     tide_renew_threshold = config['tide_renew_threshold']
-    tide_predictions_file_name = config['tide_predictions_file_name']
     gpio_pin_display = config['gpio_pin_display']
     gpio_pin_sound = config['gpio_pin_sound']
     gpio_pin_power = config['gpio_pin_power']
@@ -197,15 +197,19 @@ def main():
 
     strip.begin()
 
-    tt = noaatides.TideTask(
-        tide_station,
-        noaatides.TideOffset(
-            (tide_time_offset_low, tide_time_offset_high),
-            (tide_level_offset_low, tide_level_offset_high)),
-        (datetime.timedelta(days=tide_request_window_back), datetime.timedelta(days=tide_request_window_forward)),
-        datetime.timedelta(days=tide_renew_threshold),
-        tide_predictions_file_name)
+    time_offset = predictions.AdditiveOffset(
+        datetime.timedelta(minutes=tide_time_offset_low),
+        datetime.timedelta(minutes=tide_time_offset_high))
+    level_offset = predictions.MultiplicativeOffset(
+        tide_level_offset_low,
+        tide_level_offset_high)
+    tide_offset = predictions.TideOffset(time_offset, level_offset)
+    query_range = (
+        datetime.timedelta(days=tide_request_window_back),
+        datetime.timedelta(days=tide_request_window_forward))
+    renew_threshold = datetime.timedelta(days=tide_renew_threshold)
 
+    tt = task.TideTask(tide_station, tide_offset, query_range, renew_threshold)
     tt.start()
 
     start_tide_logger(tt)

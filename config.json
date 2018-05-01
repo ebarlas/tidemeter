@@ -1,12 +1,12 @@
 {
   "tide_station": "9414290",
   "tide_time_offset": {
-    "low": 131,
-    "high": 179
+    "low": 179,
+    "high": 131
   },
   "tide_level_offset": {
-    "low": 1.15,
-    "high": 0.82
+    "low": 0.82,
+    "high": 1.15
   },
   "tide_request_window": {
     "back": 1,
@@ -14,7 +14,6 @@
   },
   "tide_renew_threshold": 1,
   "log_file_name": "tidemeter.log",
-  "tide_predictions_file_name": "tides.csv",
   "sound_enabled": false,
   "gpio_pin_display": 17,
   "gpio_pin_sound": 4,

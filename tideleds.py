@@ -1,3 +1,5 @@
+import math
+
 class LedConfiguration():
     def __init__(self, num_low_leds, num_high_leds, num_level_leds, min_led_level):
         self.num_low_leds = num_low_leds
@@ -30,7 +32,7 @@ def count_up_display(led_config, tide_level, tide_rising, color_mapper, color_of
     led_strip = [color_off] * led_config.num_level_leds
     yield TideLeds(low_leds, high_leds, led_strip, 1)
 
-    level_floor = int(tide_level)
+    level_floor = math.floor(tide_level)
     for n in range(led_config.num_level_leds):
         led_level = n + led_config.min_led_level
         if level_floor >= led_level:
@@ -83,7 +85,7 @@ def static_wheel_display(led_config, tide_level, tide_rising, color_mapper, colo
 
 
 def main():
-    for tm in static_wheel_display(LedConfiguration(2, 2, 12, -2), 5.35, True, lambda n, i: n + i, 0):
+    for tm in count_up_solid_display(LedConfiguration(2, 2, 12, -2), -0.5, True, 1, 0):
         print(tm)
 
 
